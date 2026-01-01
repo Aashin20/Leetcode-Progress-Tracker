@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LeetCode Progress Tracker</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+    <aside class="sidebar">
+        <button class="nav-btn active" onclick="switchTab('questions')" title="Questions">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+        </button>
+        <button class="nav-btn" onclick="switchTab('calendar')" title="Habit Tracker">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+        </button>
+    </aside>
+
+    <main class="main-content">
+        <header class="dashboard">
+            <div class="dash-left">
+                <div class="circle-container">
+                    <svg width="80" height="80">
+                        <circle class="circle-bg" cx="40" cy="40" r="34"></circle>
+                        <circle id="prog-circle" class="circle-progress" cx="40" cy="40" r="34" stroke-dasharray="213" stroke-dashoffset="213"></circle>
+                    </svg>
+                    <div class="circle-text" id="prog-text">0%</div>
+                </div>
+                <div>
+                    <div style="font-size:1.5rem; font-weight:bold; color:#fff;">Your Progress</div>
+                    <div style="font-size:0.9rem; color:#888;">Keep pushing forward!</div>
+                </div>
+            </div>
+
+            <div class="dash-grid">
+                <div class="stat-card">
+                    <span class="stat-label">Total Solved</span>
+                    <span class="stat-val" id="d-solved">0</span>
+                    <span class="stat-sub" id="d-total">/ 0</span>
+                </div>
+                <div class="stat-card" style="border-bottom: 2px solid var(--accent);">
+                    <span class="stat-label">Patterns Mastered</span>
+                    <span class="stat-val" id="d-mastered" style="color:var(--accent)">0</span>
+                </div>
+                <div class="stat-card" style="border-bottom: 2px solid var(--green);">
+                    <span class="stat-label">Current Streak</span>
+                    <span class="stat-val" id="h-curr" style="color:var(--green)">0</span>
+                    <span class="stat-sub">Days</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Active Days</span>
+                    <span class="stat-val" id="h-active">0</span>
+                    <span class="stat-sub">This Year</span>
+                </div>
+            </div>
+        </header>
+
+        <section id="view-questions" class="view-section active">
+            <div id="q-container"></div>
+        </section>
+
+        <section id="view-calendar" class="view-section">
+            <h2 style="margin-bottom: 10px;">Activity Log</h2>
+            <div style="color:#888; margin-bottom:20px;">Review your daily consistency. Hover over squares to see counts.</div>
+            
+            <div class="cal-wrapper">
+                <table id="cal-table">
+                    <thead id="cal-head"></thead>
+                    <tbody id="cal-body"></tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <div class="modal-bg" id="modal-bg" onclick="if(event.target===this) this.style.display='none'">
+        <div class="modal">
+            <div class="modal-h" id="m-date">Date</div>
+            <ul class="modal-list" id="m-list"></ul>
+            <button class="close-btn" onclick="document.getElementById('modal-bg').style.display='none'">Close</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
