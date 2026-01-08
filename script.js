@@ -1,143 +1,125 @@
+let API_URL = "http://localhost:8000/api";
+
 const YEAR = new Date().getFullYear();
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const DAYS_IN_MONTH = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 
-// Seed data to populate the tracker if LocalStorage is empty
-const seedData = {
-    "Arrays & Hashing": [
-        {
-            "pattern": "Core Basics",
-            "problems": [
-                { "id": 1, "problem_number": 217, "title": "Contains Duplicate", "completed": false },
-                { "id": 2, "problem_number": 242, "title": "Valid Anagram", "completed": false }
-            ]
-        },
-        {
-            "pattern": "Two Pointers",
-            "problems": [
-                { "id": 3, "problem_number": 1, "title": "Two Sum", "completed": false }
-            ]
-        }
-    ],
-    "Sliding Window": [
-        {
-            "pattern": "Fixed Window",
-            "problems": [
-                { "id": 4, "problem_number": 121, "title": "Best Time to Buy and Sell Stock", "completed": false }
-            ]
-        }
-    ]
-};
-
-// Global state container
 let appData = {};
 
-function init() {
-    loadData();
-    render(appData);
-}
-
-// 1. Load Data from LocalStorage or use Seed
-function loadData() {
-    const stored = localStorage.getItem('leetcode-tracker-data');
-    if (stored) {
-        appData = JSON.parse(stored);
-    } else {
-        appData = seedData;
-        saveData();
+async function loadEnv() {
+    try {
+        const r = await fetch('/env.json');
+        if (r.ok) {
+            const e = await r.json();
+            API_URL = e.API_URL || API_URL;
+        }
+    } catch (err) {
+        console.error('Failed to load env:', err);
     }
 }
 
-// 2. Save Data to LocalStorage
-function saveData() {
-    localStorage.setItem('leetcode-tracker-data', JSON.stringify(appData));
+async function init() {
+    await loadEnv();
+    await loadData();
 }
 
-// 3. Handle Toggles
-function toggleProblem(id, status) {
-    // Find the problem in our nested structure
-    for (const category in appData) {
-        appData[category].forEach(pattern => {
-            const problem = pattern.problems.find(p => p.id === id);
-            if (problem) {
-                problem.completed = status;
-                
-                // Set completion date to TODAY for the heatmap
-                if (status) {
-                    problem.completedDate = new Date().toISOString().split('T')[0];
-                } else {
-                    delete problem.completedDate;
-                }
-            }
+async function loadData() {
+    try {
+        const response = await fetch(`${API_URL}/data`);
+        if (!response.ok) throw new Error("Failed to fetch data");
+        appData = await response.json();
+        renderList(appData);
+        recalcStats();
+    } catch (error) {
+        console.error("Error loading data:", error);
+    }
+}
+
+async function toggleProblem(id, currentStatus) {
+    const newStatus = !currentStatus;
+    const todayStr = new Date().toISOString().split('T')[0];
+    const row = document.getElementById(`p-${id}`);
+    const checkbox = document.getElementById(`chk-${id}`);
+    if (row && checkbox) {
+        if (newStatus) {
+            row.classList.add('completed');
+            checkbox.classList.add('checked');
+        } else {
+            row.classList.remove('completed');
+            checkbox.classList.remove('checked');
+        }
+        checkbox.onclick = () => toggleProblem(id, newStatus);
+    }
+    updateLocalState(id, newStatus, todayStr);
+    recalcStats();
+    try {
+        await fetch(`${API_URL}/toggle`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ problem_id: id, status: newStatus })
         });
+    } catch (error) {
+        console.error("Sync error:", error);
     }
-    
-    saveData();
-    render(appData);
 }
 
-// --- RENDER LOGIC ---
+function updateLocalState(id, status, dateStr) {
+    for (const category in appData) {
+        if (Array.isArray(appData[category])) {
+            appData[category].forEach(pattern => {
+                const problem = pattern.problems.find(p => p.id === id);
+                if (problem) {
+                    problem.completed = status;
+                    if (status) {
+                        if (!problem.completed_at) problem.completed_at = dateStr;
+                    } else {
+                        problem.completed_at = null;
+                    }
+                    updatePatternCount(pattern, problem.completed);
+                }
+            });
+        }
+    }
+}
 
-function render(data) {
-    let total = 0, solved = 0, masteredPatterns = 0;
-    let history = {}; 
+function updatePatternCount(pattern, isCompleted) {}
 
+function renderList(data) {
     const container = document.getElementById('q-container');
     container.innerHTML = '';
-
     for (const [categoryName, patterns] of Object.entries(data)) {
-        let catTotal = 0, catSolved = 0;
-        
+        if (!Array.isArray(patterns)) continue;
         const catGroup = document.createElement('div');
         catGroup.className = 'category-group';
-        
         const catHeader = document.createElement('div');
         catHeader.className = 'cat-title';
+        catHeader.innerText = categoryName;
         catGroup.appendChild(catHeader);
-
         patterns.forEach(pat => {
             const pTotal = pat.problems.length;
             const pSolved = pat.problems.filter(p => p.completed).length;
-            if(pTotal > 0 && pTotal === pSolved) masteredPatterns++;
-
             const patBlock = document.createElement('div');
             patBlock.className = 'pattern-block';
-            
-            const isMastered = pTotal === pSolved && pTotal > 0;
             patBlock.innerHTML = `
-                <div class="pattern-header ${isMastered ? 'mastered' : ''}" onclick="toggleList(this)">
+                <div class="pattern-header" onclick="toggleList(this)">
                     <div style="display:flex; align-items:center;">
-                        <span class="pattern-complete-icon">★</span>
                         <span class="pattern-name">${pat.pattern}</span>
                     </div>
-                    <span class="pattern-meta">${pSolved} / ${pTotal}</span>
+                    <span class="pattern-meta">${pTotal} Qs</span>
                 </div>
             `;
-
             const qList = document.createElement('div');
             qList.className = 'qn-list';
-
             pat.problems.forEach(p => {
-                total++; catTotal++;
-                if(p.completed) {
-                    solved++; catSolved++;
-                    if(p.completedDate) {
-                        if(!history[p.completedDate]) history[p.completedDate] = [];
-                        history[p.completedDate].push(p);
-                    }
-                }
-
                 const row = document.createElement('div');
+                row.id = `p-${p.id}`;
                 row.className = `qn-item ${p.completed ? 'completed' : ''}`;
-                
                 const chk = document.createElement('div');
+                chk.id = `chk-${p.id}`;
                 chk.className = `checkbox ${p.completed ? 'checked' : ''}`;
-                // Note: We pass !p.completed to toggle it
-                chk.onclick = () => toggleProblem(p.id, !p.completed);
-
+                chk.onclick = () => toggleProblem(p.id, p.completed);
                 row.innerHTML = `<span class="qn-id">#${p.problem_number}</span>`;
                 row.insertBefore(chk, row.firstChild);
-                
                 const title = document.createElement('span');
                 title.className = 'qn-title';
                 title.innerText = p.title;
@@ -147,48 +129,56 @@ function render(data) {
             patBlock.appendChild(qList);
             catGroup.appendChild(patBlock);
         });
-
-        const catPct = catTotal === 0 ? 0 : (catSolved/catTotal)*100;
-        catHeader.innerHTML = `
-            <span>${categoryName}</span>
-            <div class="cat-progress-bar"><div class="cat-progress-fill" style="width:${catPct}%"></div></div>
-            <span class="cat-stats">${catSolved}/${catTotal}</span>
-        `;
         container.appendChild(catGroup);
     }
-
-    updateDashboard(total, solved, masteredPatterns, history);
-    renderCalendar(history);
 }
 
-function updateDashboard(total, solved, mastered, history) {
+function recalcStats() {
+    let total = 0, solved = 0, masteredPatterns = 0;
+    let history = {};
+    for (const [categoryName, patterns] of Object.entries(appData)) {
+        if (!Array.isArray(patterns)) continue;
+        patterns.forEach(pat => {
+            const pTotal = pat.problems.length;
+            let pSolved = 0;
+            pat.problems.forEach(p => {
+                total++;
+                if (p.completed) {
+                    solved++;
+                    pSolved++;
+                    if (p.completed_at) {
+                        const cleanDate = p.completed_at.split('T')[0];
+                        if (!history[cleanDate]) history[cleanDate] = [];
+                        history[cleanDate].push(p);
+                    }
+                }
+            });
+            if (pTotal > 0 && pTotal === pSolved) masteredPatterns++;
+        });
+    }
     document.getElementById('d-solved').innerText = solved;
     document.getElementById('d-total').innerText = `/ ${total}`;
-    document.getElementById('d-mastered').innerText = mastered;
-
+    document.getElementById('d-mastered').innerText = masteredPatterns;
     const pct = total === 0 ? 0 : Math.round((solved / total) * 100);
-    const offset = 213 - (213 * pct) / 100; 
+    const offset = 213 - (213 * pct) / 100;
     document.getElementById('prog-circle').style.strokeDashoffset = offset;
     document.getElementById('prog-text').innerText = `${pct}%`;
-
     const dates = Object.keys(history).sort();
     document.getElementById('h-active').innerText = dates.length;
-    
     let currStreak = 0;
     const todayStr = new Date().toISOString().split('T')[0];
-    
-    // Check if we did something today
-    if(history[todayStr]) {
+    if (history[todayStr]) {
         currStreak = 1;
         let check = new Date(todayStr);
-        while(true) {
-            check.setDate(check.getDate()-1);
+        while (true) {
+            check.setDate(check.getDate() - 1);
             const checkStr = check.toISOString().split('T')[0];
-            if(history[checkStr]) currStreak++;
+            if (history[checkStr]) currStreak++;
             else break;
         }
     }
     document.getElementById('h-curr').innerText = currStreak;
+    renderCalendar(history);
 }
 
 function toggleList(header) {
@@ -201,7 +191,7 @@ function switchTab(tab) {
     document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
     document.getElementById(`view-${tab}`).classList.add('active');
     const btns = document.querySelectorAll('.nav-btn');
-    if(tab === 'questions') btns[0].classList.add('active');
+    if (tab === 'questions') btns[0].classList.add('active');
     else btns[1].classList.add('active');
 }
 
@@ -209,32 +199,28 @@ function renderCalendar(history) {
     const calHead = document.getElementById('cal-head');
     const calBody = document.getElementById('cal-body');
     calHead.innerHTML = ''; calBody.innerHTML = '';
-
     const hTr = document.createElement('tr');
     hTr.appendChild(document.createElement('th'));
-    for(let i=1; i<=31; i++) {
+    for (let i = 1; i <= 31; i++) {
         const th = document.createElement('th');
         th.innerText = i;
         hTr.appendChild(th);
     }
     calHead.appendChild(hTr);
-
-    for(let m=0; m<12; m++) {
+    for (let m = 0; m < 12; m++) {
         const tr = document.createElement('tr');
         const th = document.createElement('td');
         th.className = 'row-head';
         th.innerText = MONTHS[m];
         tr.appendChild(th);
-
-        for(let d=1; d<=31; d++) {
+        for (let d = 1; d <= 31; d++) {
             const td = document.createElement('td');
-            if(d > DAYS_IN_MONTH[m]) {
+            if (d > DAYS_IN_MONTH[m]) {
                 td.className = 'invalid';
             } else {
                 td.className = 'day';
-                const dateKey = `${YEAR}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+                const dateKey = `${YEAR}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
                 const solvedToday = history[dateKey] || [];
-                
                 if (solvedToday.length > 0) {
                     const c = solvedToday.length;
                     td.classList.add(c >= 3 ? 'l-3' : (c === 2 ? 'l-2' : 'l-1'));
@@ -260,5 +246,4 @@ function showModal(date, items) {
     });
 }
 
-// Start the app
 init();
