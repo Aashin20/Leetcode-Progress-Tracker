@@ -45,3 +45,23 @@ async def shutdown_db_client():
     if client:
         client.close()
         client = None
+
+class ToggleRequest(BaseModel):
+    problem_id: int
+    status: bool
+
+def update_nested_problem(data: Dict, target_id: int, new_status: bool, date_str: Optional[str]) -> bool:
+    for category_key in data:
+        if isinstance(data[category_key], list):
+            for pattern_obj in data[category_key]:
+                if isinstance(pattern_obj, dict) and "problems" in pattern_obj:
+                    for problem in pattern_obj["problems"]:
+                        if problem.get("id") == target_id:
+                            problem["completed"] = new_status
+                            if new_status:
+                                if not problem.get("completed_at"):
+                                    problem["completed_at"] = date_str
+                            else:
+                                problem["completed_at"] = None
+                            return True
+    return False
