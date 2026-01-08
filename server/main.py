@@ -38,3 +38,10 @@ async def startup_db_client():
         raise RuntimeError(f"Unable to connect to MongoDB: {e}")
     db = client["sheets"]
     collection = db["375"]
+
+@app.on_event("shutdown")
+async def shutdown_db_client():
+    global client
+    if client:
+        client.close()
+        client = None
