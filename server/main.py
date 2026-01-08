@@ -65,3 +65,12 @@ def update_nested_problem(data: Dict, target_id: int, new_status: bool, date_str
                                 problem["completed_at"] = None
                             return True
     return False
+
+@app.get("/api/data")
+async def get_data():
+    document = await collection.find_one({})
+    if not document:
+        return {}
+    if "_id" in document:
+        document["_id"] = str(document["_id"])
+    return document
