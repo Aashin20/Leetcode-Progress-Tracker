@@ -74,3 +74,17 @@ async def get_data():
     if "_id" in document:
         document["_id"] = str(document["_id"])
     return document
+
+@app.post("/api/toggle")
+async def toggle_problem(req: ToggleRequest):
+    document = await collection.find_one({})
+    if not document:
+        raise HTTPException(status_code=404, detail="Sheet not found")
+    doc_id = document["_id"]
+    today_str = datetime.now().strftime("%Y-%m-%d")
+    found = update_nested_problem(document, req.problem_id, req.status, today_str)
+    if found:
+        await collection.replace_one({"_id": doc_id}, document)
+        return {"message": "Updated successfully", "id": req.problem_id, "completed_at": today_str if req.status else None}
+    else:
+        raise HTTPException(status_code=404, detail="Problem ID not found")
