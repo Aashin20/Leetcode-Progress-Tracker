@@ -88,3 +88,6 @@ async def toggle_problem(req: ToggleRequest):
         return {"message": "Updated successfully", "id": req.problem_id, "completed_at": today_str if req.status else None}
     else:
         raise HTTPException(status_code=404, detail="Problem ID not found")
+
+if __name__ == "__main__":
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
