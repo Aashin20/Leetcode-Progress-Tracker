@@ -27,3 +27,14 @@ if not MONGO_URI:
 client = None
 db = None
 collection = None
+
+@app.on_event("startup")
+async def startup_db_client():
+    global client, db, collection
+    client = AsyncIOMotorClient(MONGO_URI, serverSelectionTimeoutMS=5000)
+    try:
+        await client.admin.command("ping")
+    except Exception as e:
+        raise RuntimeError(f"Unable to connect to MongoDB: {e}")
+    db = client["sheets"]
+    collection = db["375"]
