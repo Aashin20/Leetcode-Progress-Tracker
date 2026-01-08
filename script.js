@@ -1,4 +1,4 @@
-let API_URL = "http://localhost:8000/api";
+const API_URL = process.env.API_URL;
 
 const YEAR = new Date().getFullYear();
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
