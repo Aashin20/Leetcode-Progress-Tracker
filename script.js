@@ -1,4 +1,4 @@
-const API_URL = process.env.API_URL;
+let API_URL = "https://leetcode-progress-tracker-iota.vercel.app/api";
 
 const YEAR = new Date().getFullYear();
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -6,9 +6,20 @@ const DAYS_IN_MONTH = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 
 let appData = {};
 
-
+async function loadEnv() {
+    try {
+        const r = await fetch('/env.json');
+        if (r.ok) {
+            const e = await r.json();
+            API_URL = e.API_URL || API_URL;
+        }
+    } catch (err) {
+        console.error('Failed to load env:', err);
+    }
+}
 
 async function init() {
+    await loadEnv();
     await loadData();
 }
 
